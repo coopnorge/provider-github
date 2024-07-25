@@ -38,6 +38,9 @@ const (
 	keyAppAuthPemFile        = "pem_file"
 	keyWriteDelayMs          = "write_delay_ms"
 	keyReadDelayMs           = "read_delay_ms"
+	keyRetryDelayMs          = "retry_delay_ms"
+	keyMaxRetries            = "max_retries"
+	keyRetryableErrors       = "retryable_errors"
 )
 
 type appAuth struct {
@@ -47,18 +50,18 @@ type appAuth struct {
 }
 
 type githubConfig struct {
-	BaseURL      *string    `json:"base_url,omitempty"`
-	Owner        *string    `json:"owner,omitempty"`
-	Token        *string    `json:"token,omitempty"`
-	AppAuth      *[]appAuth `json:"app_auth,omitempty"`
-	WriteDelayMs *int       `json:"write_delay_ms,omitempty"`
-	ReadDelayMs  *int       `json:"read_delay_ms,omitempty"`
+	BaseURL         *string    `json:"base_url,omitempty"`
+	Owner           *string    `json:"owner,omitempty"`
+	Token           *string    `json:"token,omitempty"`
+	AppAuth         *[]appAuth `json:"app_auth,omitempty"`
+	WriteDelayMs    *int       `json:"write_delay_ms,omitempty"`
+	ReadDelayMs     *int       `json:"read_delay_ms,omitempty"`
+	RetryDelayMs    *int       `json:"retry_delay_ms,omitempty"`
+	MaxRetries      *int       `json:"max_retries,omitempty"`
+	RetryableErrors []int      `json:"retryable_errors,omitempty"`
 }
 
-func terraformProviderConfigurationBuilder(creds githubConfig) (terraform.ProviderConfiguration, error) {
-
-	cnf := terraform.ProviderConfiguration{}
-
+func terraformProviderConfigurationAuthSettings(creds githubConfig, cnf terraform.ProviderConfiguration) (terraform.ProviderConfiguration, error) {
 	if creds.BaseURL != nil {
 		cnf[keyBaseURL] = *creds.BaseURL
 	}
@@ -88,6 +91,10 @@ func terraformProviderConfigurationBuilder(creds githubConfig) (terraform.Provid
 		cnf[keyAppAuth] = aaList
 	}
 
+	return cnf, nil
+}
+
+func terraformProviderConfigurationDelaySettings(creds githubConfig, cnf terraform.ProviderConfiguration) terraform.ProviderConfiguration {
 	if creds.WriteDelayMs != nil {
 		cnf[keyWriteDelayMs] = *creds.WriteDelayMs
 	}
@@ -95,6 +102,37 @@ func terraformProviderConfigurationBuilder(creds githubConfig) (terraform.Provid
 	if creds.ReadDelayMs != nil {
 		cnf[keyReadDelayMs] = *creds.ReadDelayMs
 	}
+
+	return cnf
+}
+
+func terraformProviderConfigurationRetrySettings(creds githubConfig, cnf terraform.ProviderConfiguration) terraform.ProviderConfiguration {
+	if creds.RetryDelayMs != nil {
+		cnf[keyRetryDelayMs] = *creds.RetryDelayMs
+	}
+
+	if creds.MaxRetries != nil {
+		cnf[keyMaxRetries] = *creds.MaxRetries
+	}
+
+	if creds.RetryableErrors != nil {
+		cnf[keyRetryableErrors] = creds.RetryableErrors
+	}
+
+	return cnf
+}
+
+func terraformProviderConfigurationBuilder(creds githubConfig) (terraform.ProviderConfiguration, error) {
+
+	cnf := terraform.ProviderConfiguration{}
+
+	cnf, err := terraformProviderConfigurationAuthSettings(creds, cnf)
+	if err != nil {
+		return nil, err
+	}
+
+	cnf = terraformProviderConfigurationDelaySettings(creds, cnf)
+	cnf = terraformProviderConfigurationRetrySettings(creds, cnf)
 
 	return cnf, nil
 

@@ -771,6 +771,11 @@ func (in *OrganizationObservation) DeepCopyInto(out *OrganizationObservation) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.DatabaseID != nil {
+		in, out := &in.DatabaseID, &out.DatabaseID
+		*out = new(float64)
+		**out = **in
+	}
 	if in.Description != nil {
 		in, out := &in.Description, &out.Description
 		*out = new(string)
